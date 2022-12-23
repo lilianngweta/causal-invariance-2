@@ -1,7 +1,8 @@
 
 #############################################################################################################################
-#   Code for calculating the Hilbert Schmidt Information Criterion (HSIC) with a Gaussian kernel. This is a pytorch version 
-#   adapted by converting the numpy code from https://github.com/strumke/hsic_python/blob/master/hsic.py
+#   Code for calculating the Hilbert Schmidt Information Criterion (HSIC) with a Gaussian kernel. This is a pytorch version. 
+#   Some parts of the code are adapted by converting the numpy code from 
+#   https://github.com/strumke/hsic_python/blob/master/hsic.py
 #############################################################################################################################
 
 
@@ -59,3 +60,17 @@ def HSIC(x, y):
     """
     n = x.shape[0]
     return torch.trace(torch.matmul(centering(gaussian_grammat(x)),centering(gaussian_grammat(y))))/n/n
+
+def normalized_HSIC(x, y):
+    """
+    Calculate the HSIC estimator for d=2, as in [1] eq (9)
+    """
+    n = x.shape[0]
+    HSIC_xy = torch.trace(torch.matmul(centering(gaussian_grammat(x)),centering(gaussian_grammat(y))))/n/n
+    HSIC_xx = torch.trace(torch.matmul(centering(gaussian_grammat(x)),centering(gaussian_grammat(x))))/n/n
+    HSIC_yy = torch.trace(torch.matmul(centering(gaussian_grammat(y)),centering(gaussian_grammat(y))))/n/n
+    
+    return HSIC_xy/torch.sqrt(HSIC_xx * HSIC_yy)
+
+
+
