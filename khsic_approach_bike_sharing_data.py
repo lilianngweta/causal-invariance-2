@@ -154,13 +154,13 @@ def obj(z, e, W, n_s=1):
 def get_exp_results(seed=0, year='year1', season='season1'):
     np.random.seed(seed)
     # Read Data
-    train = read_csv('./data/year2_season4_train.csv')
+    train = read_csv('./data/'+year+'_'+season+'_train.csv')
     train = train.loc[np.random.choice(train.index, size=int(0.8*len(train)))].reset_index(drop=True)
     x_train = train.iloc[:, 2:].to_numpy() 
     y_train = np.array(train["cnt"])
     domain_labels = np.array(train["season"])
     
-    test = read_csv('./data/year2_season4_test.csv')
+    test = read_csv('./data/'+year+'_'+season+'_test.csv')
     test = test.loc[np.random.choice(test.index, size=int(0.8*len(test)))].reset_index(drop=True)
     x_test = test.iloc[:, 2:].to_numpy()
     y_test = np.array(test["cnt"])
@@ -190,7 +190,7 @@ def get_exp_results(seed=0, year='year1', season='season1'):
 
     # Optimize - passing data in mini-batches
     optimizer = moptim.rAdagrad(params = [R], lr=1e-2)
-    
+    saved_R = None
     best_loss = 1e5
     checkpoint = {}
     for epoch in range(epochs):
@@ -221,8 +221,8 @@ def get_exp_results(seed=0, year='year1', season='season1'):
     # (R.T)@R
 
     # Load saved R
-    R_mat = torch.load('checkpoint')['R']
-
+    #R_mat = torch.load('checkpoint')['R']
+    R_mat = saved_R
     # Obtain post-processed features
     f_train = x_train @ R_mat.detach().numpy()  
     # f_train = z_train @ R_mat.detach().numpy()
