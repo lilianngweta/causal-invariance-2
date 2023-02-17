@@ -1,13 +1,13 @@
-alpha = 1.0
+
 # alpha_sk = 0.5 # for creating skewed data used to learn R
-eta = 1.0#0.99
-batch_size = 128
-ns = 1 #specify number of style features
-epochs = 100
+# eta = 1.0#0.99
+# batch_size = 128
+# # ns = 1 #specify number of style features
+# epochs = 100
 
 
 import numpy as np
-# from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 import torch
 from numpy import load
@@ -151,16 +151,16 @@ def obj(z, e, W, n_s=1):
     loss = (MI_content_style + MI_conten_env) - MI_style_env
     return loss
 
-def get_exp_results(seed=0, year='year1', season='season1'):
+def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=128, epochs=100, learning_rate=0.01):
     np.random.seed(seed)
     # Read Data
-    train = read_csv('./data/year2_season4_train.csv')
+    train = read_csv('./data/'+year+'_'+season+'_train.csv')
     train = train.loc[np.random.choice(train.index, size=int(0.8*len(train)))].reset_index(drop=True)
     x_train = train.iloc[:, 2:].to_numpy() 
     y_train = np.array(train["cnt"])
     domain_labels = np.array(train["season"])
     
-    test = read_csv('./data/year2_season4_test.csv')
+    test = read_csv('./data/'+year+'_'+season+'_test.csv')
     test = test.loc[np.random.choice(test.index, size=int(0.8*len(test)))].reset_index(drop=True)
     x_test = test.iloc[:, 2:].to_numpy()
     y_test = np.array(test["cnt"])
@@ -182,15 +182,23 @@ def get_exp_results(seed=0, year='year1', season='season1'):
 
 
     # Initialize R
-    R = mnn.Parameter(manifold=mnn.Stiefel(d,k)).float()
+    # Obtain prediction coefficients of domain labels
+    lr_model_d = LogisticRegression(random_state=0).fit(x_train, domain_labels)
+    d_coefficients = lr_model_d.coef_.reshape(-1,1)
+    R1 = torch.from_numpy(d_coefficients / np.linalg.norm(d_coefficients))
+    print("Printing R1 shape!!!!!!!")
+    print(R1.shape)
+    
+    R2 = mnn.Parameter(manifold=mnn.Stiefel(d,k-1)).float()
+    R = torch.cat((R1, R2), 1)
 
-    # print("Initial R")
-    # print(R)
+    print("Initial R")
+    print(R)
 
 
     # Optimize - passing data in mini-batches
-    optimizer = moptim.rAdagrad(params = [R], lr=1e-2)
-    
+    optimizer = moptim.rAdagrad(params = [R], lr=learning_rate)
+    saved_R = None
     best_loss = 1e5
     checkpoint = {}
     for epoch in range(epochs):
@@ -216,13 +224,13 @@ def get_exp_results(seed=0, year='year1', season='season1'):
 
 #     checkpoint
 
-    # print("R after optimization")
-    # print(R)
+    print("R after optimization")
+    print(R)
     # (R.T)@R
 
     # Load saved R
-    R_mat = torch.load('checkpoint')['R']
-
+    #R_mat = torch.load('checkpoint')['R']
+    R_mat = saved_R
     # Obtain post-processed features
     f_train = x_train @ R_mat.detach().numpy()  
     # f_train = z_train @ R_mat.detach().numpy()
@@ -276,7 +284,14 @@ def get_exp_results(seed=0, year='year1', season='season1'):
 if __name__ == "__main__":
     ITERS = range(20)
     years = ['year1', 'year2'] 
-    seasons = ['season1', 'season2', 'season3', 'season4']  
+    seasons = ['season1', 'season2', 'season3', 'season4'] 
+    
+    etas = [0.85,1.0]#[0.9,0.95, 0.99, 1.0]#0.99
+    batch_sizes = [128]#[64,128,256,512]
+    # ns = 1 #specify number of style features
+    epoch_sizes = [100]
+    learning_rates = [0.01, 0.001,0.0001]
+    
     #transf_types = ['girl_sketch_val', 'dog_sketch_val', 'picasso_original_val', 'picasso_dog_val']  
     #alphas = [0.5,0.75,0.90,0.95,0.99,1.0] 
     #lamdas= [1,10]#[1,10,50,1000]
@@ -285,17 +300,18 @@ if __name__ == "__main__":
     #grid = list(product(datasets, extractors, transf_types, alphas, lamdas,etas,ITERS))
     
     #grid = list(product(datasets, extractors, transf_types, lamdas,etas))
-    grid = list(product(seasons, years,ITERS))
+    grid = list(product(learning_rates, epoch_sizes, batch_sizes, etas, seasons, years,ITERS))
 
     i = int(float(sys.argv[1]))
     #dataset, extractor, transf_type, alpha, lamda, eta, ITER = grid[i]
-    season, year,ITER = grid[i]
+    learning_rate, epoch_size, batch_size, eta, season, year,ITER = grid[i]
 
     #results_log = get_exp_results(alpha = alpha, seed=int(ITER), lamda=lamda, extractor=extractor, 
     #                             transf_type=transf_type, dataset=dataset, eta=eta)
     
-    results_log = get_exp_results(seed=int(ITER), year=year, season=season)
+    results_log = get_exp_results(seed=int(ITER), year=year, season=season, eta=eta, batch_size=batch_size, 
+                                  epochs=epoch_size, learning_rate=learning_rate)
     with open(f'summary_bike/summary_{i}.json', 'w') as fp:
         json.dump(results_log, fp)
-
-    
+        
+        

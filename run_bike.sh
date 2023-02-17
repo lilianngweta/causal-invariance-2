@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=bike_hsic
 #SBATCH --output=logs_bike/hsic_%A_%a.out
-#SBATCH --array=0-159
+#SBATCH --array=0-959
 #SBATCH --nodes=1
 #SBATCH --time=6:00:00
 #SBATCH -D /gpfs/u/home/RLML/RLMLngwt/scratch/causal-invariance-2
