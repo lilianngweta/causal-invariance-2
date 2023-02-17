@@ -197,7 +197,9 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
 
 
     # Optimize - passing data in mini-batches
+    
     optimizer = moptim.rAdagrad(params = [R], lr=learning_rate)
+    
     saved_R = None
     best_loss = 1e5
     checkpoint = {}
