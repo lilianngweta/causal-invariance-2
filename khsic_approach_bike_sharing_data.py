@@ -2,7 +2,7 @@
 # alpha_sk = 0.5 # for creating skewed data used to learn R
 # eta = 1.0#0.99
 # batch_size = 128
-# # ns = 1 #specify number of style features
+# ns = 1 #specify number of style features
 # epochs = 100
 
 
@@ -18,6 +18,8 @@ from sklearn import preprocessing
 import torch
 import mctorch.nn as mnn
 import mctorch.optim as moptim
+from torch.autograd import Variable
+
 from hsic_calculator import HSIC, normalized_HSIC
 import pandas as pd
 from pandas import read_csv
@@ -142,12 +144,27 @@ from sklearn.metrics import mean_squared_error
 #     loss = (MI_content_style + MI_conten_env) - MI_style_env
 #     return loss
 
-def obj(z, e, W, n_s=1):
+
+
+
+
+# def obj(z, e, W, n_s=1):
+#     z = torch.from_numpy(z).float()
+#     e = torch.from_numpy(e).float()
+#     MI_content_style = normalized_HSIC(torch.matmul(z, W[:,:n_s]), torch.matmul(z, W[:,n_s:]))
+#     MI_conten_env = normalized_HSIC(torch.matmul(z,W[:,n_s:]), e)
+#     MI_style_env = normalized_HSIC(torch.matmul(z,W[:,:n_s]), e)
+#     loss = (MI_content_style + MI_conten_env) - MI_style_env
+#     return loss
+
+
+
+def obj(z, e, W1, W2):
     z = torch.from_numpy(z).float()
     e = torch.from_numpy(e).float()
-    MI_content_style = normalized_HSIC(torch.matmul(z, W[:,:n_s]), torch.matmul(z, W[:,n_s:]))
-    MI_conten_env = normalized_HSIC(torch.matmul(z,W[:,n_s:]), e)
-    MI_style_env = normalized_HSIC(torch.matmul(z,W[:,:n_s]), e)
+    MI_content_style = normalized_HSIC(torch.matmul(z, W1), torch.matmul(z, W2))
+    MI_conten_env = normalized_HSIC(torch.matmul(z, W2), e)
+    MI_style_env = normalized_HSIC(torch.matmul(z,W1), e)
     loss = (MI_content_style + MI_conten_env) - MI_style_env
     return loss
 
@@ -184,21 +201,47 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
     # Initialize R
     # Obtain prediction coefficients of domain labels
     lr_model_d = LogisticRegression(random_state=0).fit(x_train, domain_labels)
-    d_coefficients = lr_model_d.coef_.reshape(-1,1)
-    R1 = torch.from_numpy(d_coefficients / np.linalg.norm(d_coefficients))
+    d_coefficients1 = lr_model_d.coef_[0].reshape(-1,1)
+    d_coefficients2 = lr_model_d.coef_[1].reshape(-1,1)
+    d_coefficients3 = lr_model_d.coef_[2].reshape(-1,1)
+    print("lr_model_d.coef_ shape!!!!!")
+    print(lr_model_d.coef_.shape)
+    
+    ns = lr_model_d.coef_.shape[0]
+    C1 = torch.from_numpy(d_coefficients1 / np.linalg.norm(d_coefficients1)).float()
+    C2 = torch.from_numpy(d_coefficients2 / np.linalg.norm(d_coefficients2)).float()
+    C3 = torch.from_numpy(d_coefficients3 / np.linalg.norm(d_coefficients3)).float()
+#     print("Printing x_train shape!!!!!!!")
+#     print(x_train.shape)
+#     print(type(domain_labels[0]))
+#     print(np.unique(domain_labels))
+    
+#     R1 = d_coefficients / np.linalg.norm(d_coefficients)
+    
+    print("Printing C3 shape!!!!!!!")
+    print(C3.shape)
+#     print(R3)
+    
+    
+#     R1 = Variable(C1, requires_grad=False).double()
+#     R2 = Variable(C2, requires_grad=False).double()
+#     R3 = Variable(C3, requires_grad=False).double()
+    
+    R1 = torch.cat((C1,C2,C3), 1)
+    
+    R2 = mnn.Parameter(manifold=mnn.Stiefel(d,k)).float()
     print("Printing R1 shape!!!!!!!")
     print(R1.shape)
-    
-    R2 = mnn.Parameter(manifold=mnn.Stiefel(d,k-1)).float()
-    R = torch.cat((R1, R2), 1)
+#     R = torch.cat((R1, R2, R3, R4), 1)
 
-    print("Initial R")
-    print(R)
+#     print("Initial R")
+#     print(R)
 
 
     # Optimize - passing data in mini-batches
     
-    optimizer = moptim.rAdagrad(params = [R], lr=learning_rate)
+#     optimizer = moptim.rAdagrad(params = [R], lr=learning_rate)
+    optimizer = moptim.rAdagrad(params = [R2], lr=learning_rate)
     
     saved_R = None
     best_loss = 1e5
@@ -209,13 +252,14 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
 #             print("Inside the second loop!!!!!!!!!!!!!!!!!!")
             train_data_subset = x_train[index:index+batch_size]
             style_labels_subset = domain_labels[index:index+batch_size]
-            loss = obj(train_data_subset, style_labels_subset, R, ns) 
+            loss = obj(train_data_subset, style_labels_subset, R1, R2) 
 #             print("printing loss")
 #             print(loss)
             # saving R with the smallest loss value so far
             if loss < best_loss:
                 best_loss = loss
                 print("Saving R, at epoch ", epoch)
+                R = torch.cat((R1, R2), 1)
                 saved_R = R
                 checkpoint = {'epoch': epoch, 'loss': loss, 'R': R}
                 torch.save(checkpoint, 'checkpoint') 
@@ -226,8 +270,8 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
 
 #     checkpoint
 
-    print("R after optimization")
-    print(R)
+#     print("R after optimization")
+#     print(R)
     # (R.T)@R
 
     # Load saved R
@@ -288,9 +332,9 @@ if __name__ == "__main__":
     years = ['year1', 'year2'] 
     seasons = ['season1', 'season2', 'season3', 'season4'] 
     
-    etas = [0.85,1.0]#[0.9,0.95, 0.99, 1.0]#0.99
+    etas = [1.0,0.85]#[0.9,0.95, 0.99, 1.0]#0.99
     batch_sizes = [128]#[64,128,256,512]
-    # ns = 1 #specify number of style features
+    # n_styles = [3] #specify number of style features
     epoch_sizes = [100]
     learning_rates = [0.01, 0.001,0.0001]
     
