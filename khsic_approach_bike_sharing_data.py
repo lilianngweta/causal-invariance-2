@@ -319,11 +319,16 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
     results_log['seed'] = seed
     results_log['year'] = year
     results_log['season'] = season
+    
+    results_log['eta'] = eta
+    results_log['batch_size'] = batch_size
+    results_log['epochs'] = epochs
+    results_log['learning_rate'] = learning_rate
+    
 #     results_log['baseline_indist_accuracy'] = baseline_indist_accuracy
 #     results_log['new_HSIC_indist_accuracy'] = new_HSIC_indist_accuracy
     results_log['baseline_ood_mse'] = baseline_ood_mse            
-    results_log['new_HSIC_ood_mse'] = new_HSIC_ood_mse   
-
+    results_log['new_HSIC_ood_mse'] = new_HSIC_ood_mse  
 
     return results_log
 
@@ -332,7 +337,7 @@ if __name__ == "__main__":
     years = ['year1', 'year2'] 
     seasons = ['season1', 'season2', 'season3', 'season4'] 
     
-    etas = [1.0,0.85]#[0.9,0.95, 0.99, 1.0]#0.99
+    etas = [0.85,1.0]#[0.9,0.95, 0.99, 1.0]#0.99
     batch_sizes = [128]#[64,128,256,512]
     # n_styles = [3] #specify number of style features
     epoch_sizes = [100]
