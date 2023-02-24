@@ -292,13 +292,13 @@ def get_exp_results(seed=0, year='year1', season='season1', eta=1.0, batch_size=
     # Trained on original baseline features, tested on colored features - no spurious correlations 
     print("number of original features")
     print(x_train.shape)
-    logistic_regression_on_baseline_og = LinearRegression().fit(x_train,y_train)                                     
-    # baseline_ood_accuracy = logistic_regression_on_baseline_og.score(x_test, y_test)
-    y_pred = logistic_regression_on_baseline_og.predict(x_test)
+    linear_regression_on_baseline_og = LinearRegression().fit(x_train,y_train)                                     
+    # baseline_ood_accuracy = linear_regression_on_baseline_og.score(x_test, y_test)
+    y_pred = linear_regression_on_baseline_og.predict(x_test)
     baseline_ood_mse = mean_squared_error(y_test, y_pred)
     print("baseline_ood_mse")
     print(baseline_ood_mse)   
-#     baseline_ood_accuracy = logistic_regression_on_baseline_og.score(z_test_t, y_test_og)
+#     baseline_ood_accuracy = linear_regression_on_baseline_og.score(z_test_t, y_test_og)
     ####################################
 
 
@@ -337,7 +337,7 @@ if __name__ == "__main__":
     years = ['year1', 'year2'] 
     seasons = ['season1', 'season2', 'season3', 'season4'] 
     
-    etas = [0.85,1.0]#[0.9,0.95, 0.99, 1.0]#0.99
+    etas = [0.8,1.0]#[0.9,0.95, 0.99, 1.0]#0.99
     batch_sizes = [128]#[64,128,256,512]
     # n_styles = [3] #specify number of style features
     epoch_sizes = [100]
