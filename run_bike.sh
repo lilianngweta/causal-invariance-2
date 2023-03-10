@@ -16,6 +16,6 @@ echo "SLURM_ARRAY_JOB_ID: " $SLURM_ARRAY_JOB_ID
 source /gpfs/u/home/RLML/RLMLngwt/scratch/miniconda3/etc/profile.d/conda.sh
 conda activate invariance_env
 
-srun python khsic_approach_bike_sharing_data_no_coefficients.py $SLURM_ARRAY_TASK_ID
+srun python khsic_approach_bike_sharing_data.py $SLURM_ARRAY_TASK_ID
 
 
